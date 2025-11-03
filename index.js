@@ -81,7 +81,7 @@ app.post('/upload', upload.fields([{ name: 'routing' }, { name: 'resource' }]), 
         for(let r=2;r<=routingRange.e.r+1;r++){
             const routeKeyA = routingSheet['A'+r]?.v?.toString().trim() || '';
             const inventoryID = routingSheet['B'+r]?.v?.toString().trim() || '';
-            const routingNo = routingSheet['C'+r]?.v?.toString().trim() || '';
+            const routingNo = routingSheet['G'+r]?.v?.toString().trim() || '';
             const routeVersion = routingSheet['D'+r]?.v?.toString().replace(/^'+/,'').trim() || '';
             const congDoan = routingSheet['H'+r]?.v?.toString().trim() || '';
             routingData.push({routeKeyA, inventoryID, routingNo, routeVersion, congDoan});
@@ -119,15 +119,15 @@ app.post('/upload', upload.fields([{ name: 'routing' }, { name: 'resource' }]), 
                 const lowerCD=(route.congDoan||'').toLowerCase();
                 if(['extrusion','uv+bigsheet','profiling','packaging','uv','padding+packaging','profiling+bevel'].includes(lowerCD)) value=route.chiPhiArr[i];
                 longData.push({
-                    'Mã Sản phẩm': route.routeKeyA,
-                    'Mã Inventory': route.inventoryID,
-                    'Version': route.routeVersion,
+                    'Mã Đầu 5': route.routeKeyA,
+                    'InventoryID': route.inventoryID,
+                    'Routing Version': route.routeVersion,
                     'Routing No': route.routingNo,
-                    'Công đoạn': route.congDoan,
+                    'Routing Name': route.congDoan,
                     'No': cp.no,
-                    'Mã chi phí': cp.code,
-                    'Tên chi phí': cp.name,
-                    'Giá trị': value
+                    'Resource CD': cp.code,
+                    'Resource Name': cp.name,
+                    'Price': value
                 });
             });
         });
@@ -137,7 +137,7 @@ app.post('/upload', upload.fields([{ name: 'routing' }, { name: 'resource' }]), 
         const newWB = xlsx.utils.book_new();
         const newWS = xlsx.utils.json_to_sheet(longData);
         xlsx.utils.book_append_sheet(newWB,newWS,'LongFormat');
-        outFile = path.join(__dirname,'uploads','Routing_LongFormat.xlsx');
+        outFile = path.join(__dirname,'uploads','Resource_import.xlsx');
         xlsx.writeFile(newWB,outFile);
 
         res.download(outFile,err=>{
