@@ -1,112 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Upload Routing & Resource</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #ece9e6, #ffffff);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      animation: fadeIn 1s ease-in-out;
-    }
+<meta charset="UTF-8">
+<title>Upload Routing & Resource</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #ece9e6, #ffffff);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  animation: fadeIn 1s ease-in-out;
+}
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-    .container {
-      background: #fff;
-      padding: 40px 50px;
-      border-radius: 12px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.1);
-      width: 420px;
-      text-align: center;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
+.container {
+  background: #fff;
+  padding: 40px 50px;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+  width: 450px;
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
 
-    .container:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-    }
+.container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
 
-    h1 {
-      margin-bottom: 30px;
-      color: #333;
-      font-size: 26px;
-    }
+h1 {
+  margin-bottom: 30px;
+  color: #333;
+  font-size: 26px;
+}
 
-    label {
-      display: block;
-      margin-bottom: 20px;
-      text-align: left;
-      font-weight: bold;
-      color: #555;
-      transition: color 0.3s ease;
-    }
+label {
+  display: block;
+  margin-bottom: 20px;
+  text-align: left;
+  font-weight: bold;
+  color: #555;
+}
 
-    label:hover {
-      color: #007bff;
-    }
+input[type="file"] {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
 
-    input[type="file"] {
-      width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 14px;
-      transition: border 0.3s ease, box-shadow 0.3s ease;
-    }
+button {
+  background-color: #007bff;
+  color: white;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
 
-    input[type="file"]:hover {
-      border-color: #007bff;
-      box-shadow: 0 0 5px rgba(0,123,255,0.2);
-    }
+button:hover {
+  background-color: #0056b3;
+  transform: scale(1.05);
+}
 
-    button {
-      background-color: #007bff;
-      color: white;
-      padding: 12px 25px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 16px;
-      transition: background 0.3s ease, transform 0.2s ease;
-    }
+/* Overlay + Spinner */
+#loadingOverlay {
+  position: fixed;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  display: none;
+}
 
-    button:hover {
-      background-color: #0056b3;
-      transform: scale(1.05);
-    }
+#loadingOverlay.active {
+  display: flex;
+}
 
-    .footer {
-      margin-top: 15px;
-      font-size: 12px;
-      color: #aaa;
-    }
-  </style>
+.spinner {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid #007bff;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>Upload Routing & Resource</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-      <label>
-        File Routing xuất ra từ Tool (giữ nguyên):
-        <input type="file" name="routing" required>
-      </label>
-      <label>
-        File Chi Phí của anh Châu:
-        <input type="file" name="resource" required>
-      </label>
-      <button type="submit">Tải lên & Xử lý</button>
-    </form>
-    
-  </div>
+<div class="container">
+  <h1>Upload Routing & Resource</h1>
+  <form id="uploadForm">
+    <label>
+      File Routing xuất ra từ Tool:
+      <input type="file" name="routing" required>
+    </label>
+    <label>
+      File Chi Phí của anh Châu:
+      <input type="file" name="resource" required>
+    </label>
+    <button type="submit">Tải lên & Xử lý</button>
+  </form>
+</div>
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+</div>
+
+<script>
+const form = document.getElementById('uploadForm');
+const overlay = document.getElementById('loadingOverlay');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  overlay.classList.add('active');
+
+  const formData = new FormData(form);
+
+  try {
+    const response = await fetch('/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) throw new Error('Lỗi khi upload file');
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Resource_import.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    overlay.classList.remove('active');
+  }
+});
+</script>
 </body>
 </html>
