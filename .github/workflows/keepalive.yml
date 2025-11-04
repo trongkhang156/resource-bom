@@ -2,7 +2,7 @@ name: Keep Render App Alive
 
 on:
   schedule:
-    - cron: "*/30 * * * *" # chạy mỗi 10 phút
+    - cron: "*/10 * * * *" # chạy mỗi 10 phút
   workflow_dispatch: # cho phép chạy thủ công
 
 jobs:
