@@ -19,6 +19,17 @@ const upload = multer({ storage });
 
 app.use(express.static('public'));
 
+// Thứ tự công đoạn (quan trọng để xác định công đoạn cuối)
+const processesOrder = [
+    "Extrusion",
+    "UV",
+    "UV+Bigsheet",
+    "Profiling",
+    "Profiling+Bevel",
+    "Packaging",
+    "Padding+Packaging"
+];
+
 // Mảng tên chi phí
 const chiPhiNames = [
     { no: 1, code: '01', name: 'Chi phí nhân công trực tiếp' },
@@ -29,13 +40,13 @@ const chiPhiNames = [
     { no: 6, code: '06', name: 'Chi phí bằng tiền khác' },
 ];
 
-// Hàm parse chi phí từ cell
+// Hàm parse chi phí
 function parseChiPhi(value) {
     if (!value) return 0;
     return parseFloat(value.toString().replace(/^'+/,'').replace(/,/g,'').trim()) || 0;
 }
 
-// Hàm đọc chi phí theo từng công đoạn
+// Đọc chi phí
 function readChiPhiCOCT(sheet, rowNumber) { return ['CO','CP','CQ','CR','CS','CT'].map(c => parseChiPhi(sheet[c+rowNumber]?.v)); }
 function readChiPhiUv(sheet, rowNumber) { return ['CU','CV','CW','CX','CY','CZ'].map(c => parseChiPhi(sheet[c+rowNumber]?.v)); }
 function readChiPhiProfiling(sheet, rowNumber) { return ['DA','DB','DC','DD','DE','DF'].map(c => parseChiPhi(sheet[c+rowNumber]?.v)); }
@@ -73,7 +84,6 @@ app.post('/upload', upload.fields([{ name: 'routing' }, { name: 'resource' }]), 
             const version = resourceSheet['D'+r]?.v?.toString().replace(/^'+/,'').trim() || '';
             resourceData.push({ maTinAn, version, rowNumber: r });
         }
-        console.log('Resource Sample:', resourceData.slice(0,5));
 
         // --- Routing ---
         const routingRange = xlsx.utils.decode_range(routingSheet['!ref']);
@@ -86,7 +96,18 @@ app.post('/upload', upload.fields([{ name: 'routing' }, { name: 'resource' }]), 
             const congDoan = routingSheet['H'+r]?.v?.toString().trim() || '';
             routingData.push({routeKeyA, inventoryID, routingNo, routeVersion, congDoan});
         }
-        console.log('Routing Sample:', routingData.slice(0,5));
+
+        // --- Tìm công đoạn cuối theo từng mã đầu 5 ---
+        const lastProcessMap = {};   
+        routingData.forEach(r => {
+            const key = r.routeKeyA;
+            if (!key) return;
+            const idx = processesOrder.indexOf((r.congDoan || "").trim());
+            if (idx === -1) return;
+            if (!lastProcessMap[key] || idx > processesOrder.indexOf(lastProcessMap[key])) {
+                lastProcessMap[key] = r.congDoan;
+            }
+        });
 
         // --- Gán chi phí ---
         const updatedData = routingData.map(route => {
@@ -95,7 +116,6 @@ app.post('/upload', upload.fields([{ name: 'routing' }, { name: 'resource' }]), 
             if(resRows.length>0){
                 let resRow = resRows.find(r=>r.version===route.routeVersion);
                 if(!resRow){ 
-                    // Version không tồn tại, lấy bản thấp nhất
                     resRows.sort((a,b)=>a.version.localeCompare(b.version));
                     resRow = resRows[0];
                 }
@@ -114,13 +134,26 @@ app.post('/upload', upload.fields([{ name: 'routing' }, { name: 'resource' }]), 
         // --- Long Format ---
         const longData=[];
         updatedData.forEach(route=>{
+
+            const lastCD = (lastProcessMap[route.routeKeyA] || "").toLowerCase();
+            const isLast = lastCD === (route.congDoan || "").toLowerCase();
+            const notPackaging = !["packaging","padding+packaging"].includes(lastCD);
+
+            // APPLY LOGIC GIỐNG HỆ ROUTING CŨ
+            let finalInventoryID = route.inventoryID;
+            if (isLast && notPackaging) {
+                finalInventoryID = route.routeKeyA;
+            }
+
             chiPhiNames.forEach((cp,i)=>{
                 let value='';
                 const lowerCD=(route.congDoan||'').toLowerCase();
-                if(['extrusion','uv+bigsheet','profiling','packaging','uv','padding+packaging','profiling+bevel'].includes(lowerCD)) value=route.chiPhiArr[i];
+                if(['extrusion','uv+bigsheet','profiling','packaging','uv','padding+packaging','profiling+bevel'].includes(lowerCD))
+                    value=route.chiPhiArr[i];
+
                 longData.push({
                     'Mã Đầu 5': route.routeKeyA,
-                    'InventoryID': route.inventoryID,
+                    'InventoryID': finalInventoryID,
                     'Routing Version': route.routeVersion,
                     'Routing No': route.routingNo,
                     'Routing Name': route.congDoan,
@@ -131,7 +164,6 @@ app.post('/upload', upload.fields([{ name: 'routing' }, { name: 'resource' }]), 
                 });
             });
         });
-        console.log('Long Data Sample:', longData.slice(0,10));
 
         // --- Xuất Excel ---
         const newWB = xlsx.utils.book_new();
